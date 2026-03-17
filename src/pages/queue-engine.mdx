@@ -1,0 +1,33 @@
+# Distributed Queue Engine
+
+A highly resilient, horizontal background processing orchestration layer backed by Redis and BullMQ, designed to offload heavy I/O workloads from the Edge API.
+
+## Worker Architecture
+
+```mermaid
+graph LR
+    subgraph "Application Edge"
+        API[Express API Route] --> |Enqueue Job (Priority 10)| Redis((Redis Memory cluster))
+    end
+    
+    subgraph "Decoupled Worker Pool"
+        Redis --> |Pop/Poll| W1[Process Worker 1]
+        Redis --> |Pop/Poll| W2[Process Worker 2]
+        Redis --> |Pop/Poll| W3[Process Worker N...]
+    end
+    
+    W1 --> |Simulated Failure| Redis
+    Note over Redis, W1: Exponential Backoff Retry Strategy
+    W2 --> |Success| S3[External Service API]
+```
+
+## System Resiliency Measures
+
+### Vertical & Horizontal Scaling
+The API servers and Worker processes are explicitly separated into different entry points (`api/index.ts` vs `worker/index.ts`). This allows DevOps engineers to scale the API cluster dynamically based on HTTP traffic, while independently scaling the Worker cluster based on Queue depth metrics.
+
+### Guaranteed Execution via Redis Hash Tags
+Queue keys are strictly defined utilizing `{}` hash tags (e.g., `{emails}:outbound`). This guarantees that all internal sorted sets, lists, and metadata keys belonging to a specific BullMQ instance reside on the exact same hash slot within a Redis Cluster pipeline, preventing cross-node `CROSSSLOT` transaction errors.
+
+### Exponential Backoff Safety Nets
+Jobs simulating arbitrary external SMTP failures are returned to the queue and delayed utilizing `type: 'exponential'`. This protects external API limits and auto-heals transient network stutters, ultimately routing chronically failing operations to a Dead Letter Queue (DLQ).
