@@ -1,0 +1,33 @@
+# LLM Orchestration Pipeline
+
+A fault-tolerant generation AI pipeline built on LangChain, designed to produce strictly structured output by orchestrating primary and fallback LLMs asynchronously.
+
+## Dual-Model Verification Flow
+
+```mermaid
+graph TD
+    Queue[Job Queue Trigger] --> |Topic & Difficulty| Orchestrator(LangChain Orchestrator)
+    
+    Orchestrator --> |Attempt 1| Primary[GPT-4o-mini (OpenAI)]
+    Primary --> |Response| Zod{Structured Output Parser}
+    
+    Zod --> |Valid Array/Object| Success((Persist to DB))
+    
+    Primary -.-> |Rate Limit / Timeout| Fallback[Gemini 1.5 Flash (Google)]
+    Zod -.-> |Schema Violation Error| Fallback
+    
+    Fallback --> |Response| Zod2{Structured Output Parser}
+    Zod2 --> |Valid Array/Object| Success
+    Zod2 -.-> |Final Failure| DLQ((Dead Letter Queue))
+```
+
+## Design Highlights
+
+### LangChain Runnable Sequences
+Replaces monolithic API calls with composable, functional Data pipelines (`RunnableSequence`). The data flows seamlessly from the `PromptTemplate`, explicitly piped into the Language Model, and then immediately piped into a parser.
+
+### Zod Validation Contracts
+Generative AI output is inherently unstable. By enforcing a strict Zod specification, we guarantee that the LLM payload conforms mathematically to the application logic boundaries before it is ever allowed to touch the database.
+
+### Intelligent Model Rerouting
+In production systems, third-party provider uptimes can severely bottleneck a queuing system. The architecture uses a `try/catch` router within the pipeline. If OpenAI goes down, the orchestrator instantly switches the identical prompt and schema configuration to a Google GenAI (Gemini) `validationLlm` model to maintain pipeline throughput automatically.

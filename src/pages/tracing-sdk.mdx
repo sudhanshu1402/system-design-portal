@@ -1,0 +1,45 @@
+# OpenTelemetry SDK Node
+
+A production-ready `NodeSDK` wrapper for OpenTelemetry, enabling end-to-end distributed tracing across microservices with Zero-Code instrumentation injection.
+
+## System Architecture
+
+```mermaid
+graph TD
+    Client[Client Request] --> |HTTP POST| API(Express API Node)
+    
+    subgraph "Application Context"
+        API --> |Context Propagation| Logger[Pino Structured Logger]
+        API --> |Auto-Instrumentation| SDK(OpenTelemetry NodeSDK)
+    end
+    
+    SDK --> |gRPC/OTLP Trace Exports| Collector[OTel Collector Contrib]
+    SDK --> |gRPC/OTLP Metrics| Collector
+    Logger --> |stdout with trace_id| LogCollector[FluentBit / Promtail]
+    
+    subgraph "Observability Vendors"
+        Collector --> |Traces| Jaeger(Jaeger / Honeycomb)
+        Collector --> |Metrics| Prom(Prometheus)
+        LogCollector --> |Logs| Elastic(Elasticsearch / Loki)
+    end
+```
+
+## Key Engineering Decisions
+
+### 1. Zero-Code Auto Instrumentation
+Rather than manually creating spans recursively, this architecture utilizes `@opentelemetry/auto-instrumentations-node`. This hooks directly into the Node.js `diagnostics_channel` and patches standard libraries (`fs`, `http`, `pg`, `redis`) to automatically generate spans.
+
+### 2. Log Correlation Pipeline
+Traces are useless without context. The custom `pino` logger implementation automatically reads the active `SpanContext` from the OpenTelemetry API and injects `trace_id` and `span_id` directly into the JSON log payload.
+
+```typescript
+// Seamless Context Extraction inside Pino Log Hook
+const spanContext = opentelemetry.trace.getSpanContext(opentelemetry.context.active());
+if (spanContext) {
+  logObject.trace_id = spanContext.traceId;
+  logObject.span_id = spanContext.spanId;
+}
+```
+
+### 3. Vendor Agnostic Collection
+By routing all signals to a local `otel-collector-contrib` instance over gRPC, the Node application is entirely decoupled from the underlying vendor (e.g. Datadog vs New Relic). The collector handles the authentication, batching, and routing independently.
