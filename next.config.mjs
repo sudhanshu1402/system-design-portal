@@ -11,4 +11,10 @@ const withNextra = nextra({
 
 export default withNextra({
   reactStrictMode: true,
+  basePath: '/system-design-portal',
+  output: 'export',
+  trailingSlash: true,
+  images: {
+    unoptimized: true,
+  },
 });
