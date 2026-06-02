@@ -7,16 +7,16 @@ A production-ready `NodeSDK` wrapper for OpenTelemetry, enabling end-to-end dist
 ```mermaid
 graph TD
     Client[Client Request] --> |HTTP POST| API(Express API Node)
-    
+
     subgraph "Application Context"
         API --> |Context Propagation| Logger[Pino Structured Logger]
         API --> |Auto-Instrumentation| SDK(OpenTelemetry NodeSDK)
     end
-    
+
     SDK --> |gRPC/OTLP Trace Exports| Collector[OTel Collector Contrib]
     SDK --> |gRPC/OTLP Metrics| Collector
     Logger --> |stdout with trace_id| LogCollector[FluentBit / Promtail]
-    
+
     subgraph "Observability Vendors"
         Collector --> |Traces| Jaeger(Jaeger / Honeycomb)
         Collector --> |Metrics| Prom(Prometheus)
@@ -33,7 +33,7 @@ Rather than manually creating spans recursively, this architecture utilizes `@op
 Traces are useless without context. The custom `pino` logger implementation automatically reads the active `SpanContext` from the OpenTelemetry API and injects `trace_id` and `span_id` directly into the JSON log payload.
 
 ```typescript
-// Seamless Context Extraction inside Pino Log Hook
+// Context Extraction inside Pino Log Hook
 const spanContext = opentelemetry.trace.getSpanContext(opentelemetry.context.active());
 if (spanContext) {
   logObject.trace_id = spanContext.traceId;
