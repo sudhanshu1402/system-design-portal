@@ -7,13 +7,13 @@ A MongoDB implementation designed for stringent compliance environments (like GD
 ```mermaid
 graph TD
     App[Global Next.js / Node Router] --> |mongodb://global-cluster...| Router(Mongos Router)
-    
+
     subgraph "MongoDB Atlas Federation"
         Router --> |Route: Region=EU| EUShard[(Frankfurt Replica Set)]
         Router --> |Route: Region=USA| USShard[(Virginia Replica Set)]
         Router --> |Route: Region=KSA| KSAShard[(Riyadh Replica Set)]
     end
-    
+
     style EUShard fill:#d4edda,stroke:#28a745
     style USShard fill:#cce5ff,stroke:#007bff
     style KSAShard fill:#fff3cd,stroke:#ffc107

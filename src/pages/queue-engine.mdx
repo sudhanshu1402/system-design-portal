@@ -9,13 +9,13 @@ graph LR
     subgraph "Application Edge"
         API[Express API Route] --> |Enqueue Job (Priority 10)| Redis((Redis Memory cluster))
     end
-    
+
     subgraph "Decoupled Worker Pool"
         Redis --> |Pop/Poll| W1[Process Worker 1]
         Redis --> |Pop/Poll| W2[Process Worker 2]
         Redis --> |Pop/Poll| W3[Process Worker N...]
     end
-    
+
     W1 --> |Simulated Failure| Redis
     Note over Redis, W1: Exponential Backoff Retry Strategy
     W2 --> |Success| S3[External Service API]
