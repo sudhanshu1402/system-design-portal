@@ -1,5 +1,7 @@
 # System Design Portal
 
+[![Deploy](https://github.com/sudhanshu1402/system-design-portal/actions/workflows/deploy.yml/badge.svg)](https://github.com/sudhanshu1402/system-design-portal/actions/workflows/deploy.yml) [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
 Architecture write-ups for the production systems I have built, with Mermaid
 diagrams and the reasoning behind each design. Built with Next.js + Nextra (MDX)
 and deployed to GitHub Pages.
