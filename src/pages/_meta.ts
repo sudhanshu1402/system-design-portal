@@ -1,4 +1,4 @@
-export default {
+const meta = {
   "index": "Welcome",
   "auth-stack": "Enterprise Auth Gateway",
   "queue-engine": "Distributed Queue Engine",
@@ -6,3 +6,5 @@ export default {
   "llm-pipeline": "LLM Orchestration",
   "tracing-sdk": "Distributed Observability"
 };
+
+export default meta;
