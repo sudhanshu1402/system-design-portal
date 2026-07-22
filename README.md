@@ -4,11 +4,14 @@
 
 Architecture write-ups for the production systems I have built, with Mermaid
 diagrams and the reasoning behind each design. Built with Next.js + Nextra (MDX)
-and deployed to GitHub Pages.
+and deployed as a static site to GitHub Pages.
 
 Live: [sudhanshu1402.github.io/system-design-portal](https://sudhanshu1402.github.io/system-design-portal)
 
 ## Systems documented
+
+Each page is a short deep-dive: one or more Mermaid diagrams plus the trade-offs
+behind the design, linking back to the source repo.
 
 | Article | System | Repo |
 | --- | --- | --- |
@@ -20,20 +23,35 @@ Live: [sudhanshu1402.github.io/system-design-portal](https://sudhanshu1402.githu
 
 ## Stack
 
-Next.js 14, Nextra (MDX docs theme), `@theguild/remark-mermaid` for diagrams.
-Content lives in `src/pages/*.mdx`; navigation in `src/pages/_meta.ts`.
+- Next.js 14 with static export (`output: 'export'`)
+- Nextra 3 + `nextra-theme-docs` (MDX docs theme, sidebar, search)
+- `@theguild/remark-mermaid` for rendering the diagrams
+- TypeScript
+
+Content lives in `src/pages/*.mdx`. Sidebar order and titles are in
+`src/pages/_meta.ts`. Theme, logo, and footer are in `theme.config.jsx`.
 
 ## Develop
 
 ```bash
 npm install
-npm run dev     # http://localhost:3000
-npm run build   # static export
+npm run dev     # http://localhost:3000/system-design-portal
+npm run build   # static export to ./out
 npm run lint
 ```
 
+The site uses `basePath: '/system-design-portal'`, so locally it serves under
+that path, not the root.
+
 ## Deploy
 
-`.github/workflows/` builds with `next build` and publishes to GitHub Pages on
-push to `main`. To add a system, drop a new `.mdx` file in `src/pages/` and add
-it to `_meta.ts`.
+`.github/workflows/deploy.yml` runs on push to `main` (and via manual dispatch):
+it runs `npx next build`, uploads the exported `out/` directory, and publishes it
+to GitHub Pages.
+
+To add a system: drop a new `.mdx` file in `src/pages/` and add its slug to
+`src/pages/_meta.ts`.
+
+## License
+
+MIT — see [LICENSE](LICENSE).
