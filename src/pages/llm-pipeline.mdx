@@ -1,33 +1,86 @@
-# LLM Orchestration Pipeline
+# LLM Orchestration
 
-A fault-tolerant generation AI pipeline built on LangChain, designed to produce strictly structured output by orchestrating primary and fallback LLMs asynchronously.
+Generates multiple-choice questions from an LLM, validates them against a strict Zod schema, and fails over from OpenAI to Gemini when the primary model breaks.
 
-## Dual-Model Verification Flow
+Code: [github.com/sudhanshu1402/llm-assessment-pipeline](https://github.com/sudhanshu1402/llm-assessment-pipeline)
+
+## The problem
+
+LLM APIs fail on a normal Tuesday. Rate limits, timeouts, and output that's almost-but-not-quite valid JSON. Two consequences follow, and they need different answers.
+
+One provider means one outage stops the feature. That's an availability problem, solved with a second provider.
+
+Almost-valid output is worse, because it succeeds. A question with zero correct answers, or three, parses as JSON and stores cleanly and is discovered by a candidate sitting an assessment. That's a correctness problem, and it's solved by refusing to accept the shape, not by retrying.
+
+## Architecture
 
 ```mermaid
-graph TD
-    Queue[Job Queue Trigger] --> |Topic & Difficulty| Orchestrator(LangChain Orchestrator)
+graph TB
+    Queue[Mock Job Loop] -->|topic, difficulty, language| Orchestrator[Assessment Orchestrator]
+    Orchestrator -->|RunnableSequence| Primary[GPT-4o-mini - Primary]
+    Primary -->|structured output| Parser[Zod Schema Parser]
+    Primary -.->|error or invalid output| Fallback[Gemini 1.5 Flash - Fallback]
+    Fallback -->|structured output| Parser
+    Parser -->|validated| DB[(Persist, demo logs JSON)]
+    Fallback -.->|both models failed| Caller[Caller catch, logs and skips]
 
-    Orchestrator --> |Attempt 1| Primary[GPT-4o-mini (OpenAI)]
-    Primary --> |Response| Zod{Structured Output Parser}
-
-    Zod --> |Valid Array/Object| Success((Persist to DB))
-
-    Primary -.-> |Rate Limit / Timeout| Fallback[Gemini 1.5 Flash (Google)]
-    Zod -.-> |Schema Violation Error| Fallback
-
-    Fallback --> |Response| Zod2{Structured Output Parser}
-    Zod2 --> |Valid Array/Object| Success
-    Zod2 -.-> |Final Failure| DLQ((Dead Letter Queue))
+    style Orchestrator fill:#2d3748,color:#fff
+    style Primary fill:#10a37f,color:#fff
+    style Fallback fill:#4285f4,color:#fff
+    style Parser fill:#dc2626,color:#fff
 ```
 
-## Design Highlights
+The failover and the schema validation are real. The job queue is a mock in-process loop and persistence is a console log. Point it at a real queue like the [Distributed Queue Engine](/queue-engine) and a database to run it for real.
 
-### LangChain Runnable Sequences
-Replaces monolithic API calls with composable, functional Data pipelines (`RunnableSequence`). The data flows from the `PromptTemplate`, explicitly piped into the Language Model, and then immediately piped into a parser.
+## The schema comes first
 
-### Zod Validation Contracts
-Generative AI output is inherently unstable. By enforcing a strict Zod specification, we guarantee that the LLM payload conforms mathematically to the application logic boundaries before it is ever allowed to touch the database.
+`src/schema.ts` is written before the prompt, and `StructuredOutputParser` derives the prompt's format instructions from it. One definition produces both the instruction sent to the model and the validation applied to its answer, so they can't drift apart. They drift immediately when the format is described in prose in a prompt template and enforced separately in code.
 
-### Intelligent Model Rerouting
-In production systems, third-party provider uptimes can severely bottleneck a queuing system. The architecture uses a `try/catch` router within the pipeline. If OpenAI goes down, the orchestrator instantly switches the identical prompt and schema configuration to a Google GenAI (Gemini) `validationLlm` model to maintain pipeline throughput automatically.
+The shape:
+
+```typescript
+{
+  questionText: string,       // min 10 chars
+  options: [                  // exactly 4, exactly one isCorrect: true
+    { id: string, text: string, isCorrect: boolean }, // x4
+  ],
+  explanation: string,
+  difficulty: "beginner" | "intermediate" | "advanced",
+  language: string            // locale code
+}
+```
+
+The `.refine()` on exactly one correct option is the assertion that earns its place. Type-level validation gets you four options with boolean flags; it can't express "precisely one of these is true", and that's the failure mode a model actually produces. Wording varies per generation. The shape doesn't, because the parser won't allow it.
+
+## The decisions, and what they cost
+
+**Sequential failover, not parallel consensus.** `generateQuestion()` invokes the primary chain inside a `try`; on any throw it builds a second chain against Gemini and re-runs with identical inputs. Only one model's output is ever returned. Running both and comparing would catch more subtle quality problems and would also double cost on every single generation, add a merge policy nobody asked for, and make latency the max of two providers instead of the min. Sequential pays the second cost only when the first fails.
+
+**A different vendor for the fallback, on purpose.** A second OpenAI model shares an incident with the first. Gemini doesn't.
+
+**Validation on both paths.** The fallback output goes through the same parser. A fallback that skips validation to "at least return something" is how the correctness problem re-enters through the availability fix.
+
+**Both failing propagates to the caller.** No default question, no partial save. The orchestrator's job is to produce a valid question or nothing.
+
+## Failure modes
+
+| What breaks | What happens |
+|---|---|
+| Primary rate-limited or times out | same inputs re-run against Gemini |
+| Primary returns malformed JSON | parse throws, treated as failure, falls over |
+| Model emits zero or three correct options | rejected by `.refine()`, nothing stored |
+| Difficulty outside the enum | rejected; the enum is case-sensitive |
+| Both providers fail | error reaches the caller, which logs and skips the job |
+
+## Where this stops working
+
+- **Jobs run sequentially.** Throughput needs real workers.
+- **No caching**, so two near-identical topics each cost a full generation.
+- **No cost tracking.** Token usage per generation is recorded nowhere, which is the first thing that matters once this runs at volume.
+- **Both models failing just logs and skips.** A production worker needs a dead-letter queue.
+- **No streaming**, so a long generation blocks until complete.
+- **Console logging only.** Per-generation tracing would come from [Distributed Observability](/tracing-sdk).
+
+## Test surface
+
+No API keys and no network, because every LLM dependency is mocked. `schema.test.ts` hits the validation boundaries including the exactly-one-correct refinement and the case-sensitive difficulty enum. `pipeline.test.ts` stubs `RunnableSequence.from` to control each chain, then asserts three things: primary success never touches the fallback, a primary throw reaches Gemini with the same inputs, and both failing propagates. Those three cover the entire failover contract, which is the part worth trusting.

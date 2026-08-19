@@ -1,26 +1,23 @@
-# Sudhanshu Singh - Systems Architecture
+# Systems Architecture
 
-Welcome to my Engineering Portfolio. This portal houses the **System Design Documentation** and **Production-Ready Source Code** for the top architectures I have engineered.
+Design write-ups for five backend systems I built end-to-end. Each page covers the problem, the architecture, the decisions I would defend in a review, the failure modes, and where the design stops working.
 
-## Philosophy
-Senior backend engineering isn't just about syntax; it's about **trade-offs, distributed systems, and resiliency**.
+That last section is the point. A design document that lists only strengths is marketing. The interesting part of any of these systems is the trade I accepted and what it will cost later.
 
-The systems documented here demonstrate my ability to:
-- Design for High Availability (HA) and Global Scale
-- Implement Enterprise-Grade Security (SSO, SCIM)
-- Ensure Deep Observability (OpenTelemetry)
-- Decouple compute-heavy workloads safely (BullMQ, Redis)
+## The systems
 
-## Core Architectures
-
-| Architecture | Focus Area | Technologies |
+| Write-up | The design question it answers | Stack |
 |---|---|---|
-| **[Enterprise Auth Stack](/auth-stack)** | Zero-Trust Identity, SSO Gateway | SAML, JWT, SCIM, AWS Secrets Manager |
-| **[Distributed Queue Engine](/queue-engine)** | Event-Driven, Priority Processing | Redis, BullMQ, Node.js Workers |
-| **[Multi-Region Data Residency](/mongo-sharding)** | Global Localization, Compliance | MongoDB Atlas Zone Sharding |
-| **[LLM Orchestration Pipeline](/llm-pipeline)** | Resilient AI Routing, Validation | LangChain, Zod, GPT-4, Gemini |
-| **[Distributed Tracing](/tracing-sdk)** | Microservice Observability | OpenTelemetry, Pino, Express |
+| **[Enterprise Auth Gateway](/auth-stack)** | How do you onboard a new enterprise IdP without a deploy, and survive certificate rotation? | SAML 2.0, SCIM 2.0, JWT, AWS Secrets Manager |
+| **[Distributed Queue Engine](/queue-engine)** | How do you get 2s of third-party I/O off the request path and still not lose a job? | Redis, BullMQ, Node workers |
+| **[Multi-Region Sharding](/mongo-sharding)** | How do you keep EU data in the EU with one connection string? | MongoDB Atlas zone sharding |
+| **[LLM Orchestration](/llm-pipeline)** | How do you keep almost-valid model output out of your database? | LangChain, Zod, GPT-4o-mini, Gemini |
+| **[Distributed Observability](/tracing-sdk)** | How do you tie a log line to the trace it happened in, across five services? | OpenTelemetry, OTLP/gRPC, Pino |
 
----
+Each one has a matching public repository with tests that run without network access, credentials or a live cluster. Where a system needs infrastructure I don't run, like an Atlas cluster with configured zones or a real IdP, the write-up says so rather than implying otherwise.
 
-*Navigate using the sidebar to explore deep-dive system design reviews, complete with architectural Mermaid.js diagrams and code explanations.*
+## How to read these
+
+They are written for someone deciding whether I know what I am doing, so they lead with the constraint rather than the technology. If you only read one, read the [Enterprise Auth Gateway](/auth-stack): the per-request strategy construction is the decision in this collection that looks most obviously wrong and has the clearest reasoning behind it.
+
+Source for everything is at [github.com/sudhanshu1402](https://github.com/sudhanshu1402).
