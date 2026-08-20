@@ -7,6 +7,8 @@ const withNextra = nextra({
 
 export default withNextra({
   reactStrictMode: true,
+  // Keeps Nextra's _meta.ts out of Next 15's page type-check; its loader still reads it.
+  pageExtensions: ['tsx', 'mdx'],
   basePath: '/system-design-portal',
   output: 'export',
   trailingSlash: true,
