@@ -1,3 +1,7 @@
+---
+description: "A Redis and BullMQ job engine that moves slow I/O off the request path, with separate worker processes, retries, and backpressure."
+---
+
 # Distributed Queue Engine
 
 A Redis and BullMQ job engine that gets slow I/O off the request path. The API enqueues and returns; separate worker processes do the slow part on their own schedule and their own machines.
