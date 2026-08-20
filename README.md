@@ -23,7 +23,7 @@ behind the design, linking back to the source repo.
 
 ## Stack
 
-- Next.js 14 with static export (`output: 'export'`)
+- Next.js 15 with static export (`output: 'export'`)
 - Nextra 3 + `nextra-theme-docs` (MDX docs theme, sidebar, search)
 - `@theguild/remark-mermaid` for rendering the diagrams
 - TypeScript
