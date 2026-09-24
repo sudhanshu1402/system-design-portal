@@ -12,14 +12,14 @@ Code: [github.com/sudhanshu1402/distributed-queue-engine](https://github.com/sud
 
 A password-reset email that takes 2s holds an HTTP connection open for 2s. At 50 concurrent resets that's 50 connections doing nothing but waiting on someone else's SMTP server. p99 follows the slowest dependency, and a provider having a bad afternoon becomes an API having a bad afternoon.
 
-Enqueueing costs one Redis write. The API answers in under a millisecond with `202` and a job id, and the slow work moves to a pool you can scale on queue depth instead of on HTTP traffic.
+Enqueueing costs one Redis write. The API answers with `202` and a job id as soon as that write returns, and the slow work moves to a pool you can scale on queue depth instead of on HTTP traffic.
 
 ## Architecture
 
 ```mermaid
 graph TB
     Client[Client Request] --> API[Express API Server]
-    API -->|"enqueue < 1ms"| Redis[(Redis + AOF Persistence)]
+    API -->|enqueue| Redis[(Redis + AOF Persistence)]
     Redis --> W1[Worker Process 1]
     Redis --> W2[Worker Process 2]
     Redis --> WN[Worker Process N]
