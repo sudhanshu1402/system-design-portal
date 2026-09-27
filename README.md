@@ -1,6 +1,10 @@
-# System Design Portal
+<div align="center">
+
+<img src="https://raw.githubusercontent.com/sudhanshu1402/system-design-portal/main/assets/hero.svg" width="100%" alt="The Design Review: the System Design Portal, five architecture write-ups. The Enterprise Auth Gateway, the Distributed Queue Engine, Multi-Region Sharding, LLM Orchestration and Distributed Observability." />
 
 [![Deploy](https://github.com/sudhanshu1402/system-design-portal/actions/workflows/deploy.yml/badge.svg)](https://github.com/sudhanshu1402/system-design-portal/actions/workflows/deploy.yml) [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
+</div>
 
 Architecture write-ups for five backend systems I built as reference implementations: the problem, a Mermaid diagram, the decisions I would defend in review, and where each design stops working. Next.js and Nextra, static export to GitHub Pages.
 
